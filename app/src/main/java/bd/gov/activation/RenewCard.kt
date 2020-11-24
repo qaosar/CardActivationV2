@@ -138,19 +138,20 @@ class RenewCard : AppCompatActivity() {
                                             "Disabled: " + jsonArray2.renewCard.disabled.toString() + "\n" +
                                             "Secured: " + jsonArray2.renewCard.secured.toString() + "\n" +
                                             "Cloned: " + jsonArray2.renewCard.cloned.toString() + "\n"
+                                //check `secured` field, 1: check the card by authentication, 0: write the card
                                 doAsync {
                                     Log.i("Card Writing", "Card Writing async task")
 
                                     val cardStatus = WriteIntent2(
                                         tag,
+                                        jsonArray2.renewCard.keyA.toString(),
                                         jsonArray2.renewCard.keyB.toString(),
                                         jsonArray2.renewCard.cardNo.toString(),
-                                        jsonArray2.renewCard.secured.toString(),
-                                        0
+                                        jsonArray2.renewCard.secured.toString()//integer: 0: not secured, 1: secured
                                     )
 
                                     Log.i("Card Status", cardStatus.toString())
-                                    if (cardStatus == 3) {
+                                    if (cardStatus == 3) {//if cardStatus == 1, then change the secure field from 0 to 1
                                         doAsync {
                                             val secureUrl =
                                                 secureUrl + jsonArray2.renewCard.rfidNo.toString()
@@ -370,12 +371,51 @@ return status
                     mfc.writeBlock(blockno, CrdNo.toByteArray())
                     mfc.writeBlock(keyblockno, KeyData)
                 } catch (ex: Exception) {
+                    mfc.close()
                     return 3
                 }
             } else {
+                mfc.close()
                 return 2
             }
 
+            mfc.close()
+        } else {
+            mfc.close()
+            return 0
+        }
+        return 1
+    }
+    
+    /*
+    0: card not found
+    1: operation succeeded
+    2: authentication failed*/
+    
+    private fun VerifyCard(
+        tag: Tag,
+        keyA: String,
+        CardStatus: Int
+    ): Int {
+        val mfc = MifareClassic.get(tag) as MifareClassic
+        var blockno = 20
+
+        mfc.connect()
+        if (mfc.isConnected) {
+            var KeyA: ByteArray? =
+                ubyteArrayOf(0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU).toByteArray()
+            if (CardStatus == 1) {
+                KeyA = keyA.toByteArray()
+            }
+            var sectorno = mfc.blockToSector(blockno)
+
+            if (mfc.authenticateSectorWithKeyA(sectorno, KeyA) == true) {
+                mfc.close()
+                return 1
+            } else {
+                mfc.close()
+                return 2
+            }
             mfc.close()
         } else {
             return 0
