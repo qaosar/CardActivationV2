@@ -382,4 +382,42 @@ return status
         }
         return 1
     }
+    
+    /*
+return status
+0: card not found
+1: authentication succeeded
+2: authentication failed
+*/
+    private fun ReadIntent(
+        tag: Tag,
+        keyA: String,
+        CardStatus: Int
+    ): Int {
+        val mfc = MifareClassic.get(tag) as MifareClassic
+        var blockno = 20
+
+        mfc.connect()
+        if (mfc.isConnected) {
+            var KeyA: ByteArray? =
+                ubyteArrayOf(0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU).toByteArray()
+            if (CardStatus == 1) {
+                KeyA = keyA.toByteArray()
+            }
+            var sectorno = mfc.blockToSector(blockno)
+            var keyblockno = mfc.sectorToBlock(sectorno + 1) - 1
+
+            if (mfc.authenticateSectorWithKeyA(sectorno, KeyA) == true) {
+                mfc.close()
+                return 1
+            }
+            else
+            {
+                mfc.close()
+                return 2
+            }
+        } else {
+            return 0
+        }
+    }
 }
